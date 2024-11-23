@@ -1,48 +1,63 @@
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 import spacy
+import fitz
+import re
+
+app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
 
 def detect_voice_distribution(text):
-	nlp = spacy.load("en_core_web_sm")
-	doc = nlp(text)
+    nlp = spacy.load("en_core_web_sm")
+    doc = nlp(text)
 
-	active_count = 0
-	passive_count = 0
+    active_count = 0
+    passive_count = 0
+    active = []
+    passive = []
 
-	for sent in doc.sents:
-		is_passive = False
-		for token in sent:
-			# Check for auxiliary verbs that often indicate passive voice
-			if token.dep_ == "auxpass" or (token.dep_ == "aux" and token.head.tag_ == "VBN"):
-				is_passive = True
-				break
+    for sent in doc.sents:
+        is_passive = False
+        for token in sent:
+            # Check for auxiliary verbs that often indicate passive voice
+            if token.dep_ == "auxpass" or (token.dep_ == "aux" and token.head.tag_ == "VBN"):
+                is_passive = True
+                break
 
-		if is_passive:
-			passive_count += 1
-			print(sent)
-		else:
-			active_count += 1
+        if is_passive:
+            passive_count += 1
+            passive.append(str(sent).strip())
+        else:
+            active_count += 1
+            active.append(str(sent).strip())
 
-	total_sentences = active_count + passive_count
-	active_percentage = (active_count / total_sentences) * 100 if total_sentences else 0
-	passive_percentage = (passive_count / total_sentences) * 100 if total_sentences else 0
+    total_sentences = active_count + passive_count
+    active_percentage = (active_count / total_sentences) * 100 if total_sentences else 0
+    passive_percentage = (passive_count / total_sentences) * 100 if total_sentences else 0
 
-	return {
-		"total_sentences": total_sentences,
-		"active_count": active_count,
-		"passive_count": passive_count,
-		"active_percentage": active_percentage,
-		"passive_percentage": passive_percentage,
-	}
+    return {
+        "total_sentences": total_sentences,
+        "active_count": active_count,
+        "passive_count": passive_count,
+        "active_percentage": active_percentage,
+        "passive_percentage": passive_percentage,
+        "passive sentences": passive,
+        "active sentences": active,
+    }
+
+@app.route('/analyze', methods=['POST'])
+def analyze_text():
+    # Get JSON data from the request
+    data = request.get_json()
+
+    if not data or 'text' not in data:
+        return jsonify({"error": "Invalid input. Please provide 'text' in the request body."}), 400
+
+    text = data['text']
+    # Merge the text into one block without line breaks
+    result = detect_voice_distribution(text)
+    return jsonify(result)
 
 
-# Example usage
 if __name__ == "__main__":
-	text = """To increase the accessibility of this powerful model class and at the same time reduce its significant resource consumption, a method is needed that reduces the computational complexity for both training and sampling. Reducing the computational demands of DMs without impairing their performance is, therefore, key to enhance their accessibility.
-
-Departure to Latent Space Our approach starts with the analysis of already trained diffusion models in pixel space: Fig. 2 shows the rate-distortion trade-off of a trained model. As with any likelihood-based model, learning can be roughly divided into two stages: First is a perceptual compression stage which removes high-frequency details but still learns little semantic variation. In the second stage, the actual generative model learns the semantic and conceptual composition of the data (semantic compression)."""
-
-	result = detect_voice_distribution(text)
-	print("Total Sentences:", result["total_sentences"])
-	print("Active Sentences:", result["active_count"])
-	print("Passive Sentences:", result["passive_count"])
-	print("Active Voice Percentage: {:.2f}%".format(result["active_percentage"]))
-	print("Passive Voice Percentage: {:.2f}%".format(result["passive_percentage"]))
+    app.run(host='0.0.0.0', port=5555, debug=True)
