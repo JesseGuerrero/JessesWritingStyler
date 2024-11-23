@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Active vs Passive Voice Analyzer</title>
+    <script src="https://unpkg.com/compromise"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        textarea {
+            width: 100%;
+            height: 150px;
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .results {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Active vs Passive Voice Analyzer</h1>
+    <p>Enter your text below to see the percentage of active and passive voice sentences.</p>
+    <textarea id="inputText" placeholder="Type or paste your text here..."></textarea>
+    <button onclick="analyzeText()">Analyze</button>
+    <div class="results">
+        <p><strong>Results:</strong></p>
+        <p id="activePercentage">Active Voice: 0%</p>
+        <p id="passivePercentage">Passive Voice: 0%</p>
+    </div>
+</div>
+
+<script>
+    function isPassive(sentence) {
+        // Simple heuristic to detect passive voice
+        const passiveMarkers = ["was", "is", "were", "been", "being", "be"];
+        const byMarker = / by /i;
+
+        // Split sentence into words and check for markers
+        const words = sentence.split(/\s+/);
+        const hasPassiveMarker = words.some(word => passiveMarkers.includes(word.toLowerCase()));
+        const containsByClause = byMarker.test(sentence);
+
+        return hasPassiveMarker && containsByClause;
+    }
+
+    function analyzeVoice(text) {
+        const sentences = text.match(/[^.!?]+[.!?]/g) || []; // Split text into sentences
+
+        let totalSentences = 0;
+        let passiveSentences = 0;
+
+        sentences.forEach(sentence => {
+            totalSentences++;
+            if (isPassive(sentence)) {
+                passiveSentences++;
+            }
+        });
+
+        const activeSentences = totalSentences - passiveSentences;
+
+        return {
+            activePercentage: totalSentences ? (activeSentences / totalSentences) * 100 : 0,
+            passivePercentage: totalSentences ? (passiveSentences / totalSentences) * 100 : 0
+        };
+    }
+
+    function analyzeText() {
+        const text = document.getElementById("inputText").value;
+
+        // Analyze the text
+        const results = analyzeVoice(text);
+
+        // Display results
+        document.getElementById("activePercentage").innerText = `Active Voice: ${results.activePercentage.toFixed(2)}%`;
+        document.getElementById("passivePercentage").innerText = `Passive Voice: ${results.passivePercentage.toFixed(2)}%`;
+    }
+</script>
+</body>
+</html>
